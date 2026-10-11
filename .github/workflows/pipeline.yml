@@ -1,0 +1,83 @@
+
+name: Pipeline CI-CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Vérification du code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer les dépendances
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Exécuter Flake8
+        run: python -m flake8 calculatrice.py test_calculatrice.py
+
+  test:
+    name: Tests unitaires
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer les dépendances
+        run: pip install -r requirements.txt
+
+      - name: Exécuter les tests
+        run: python -m pytest -v
+
+  build:
+    name: Construction de l'artifact
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Préparer le dossier dist
+        run: |
+          mkdir -p dist
+          cp calculatrice.py dist/
+
+      - name: Publier l'artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: calculatrice
+          path: dist/
+
+  deploy:
+    name: Simulation du déploiement
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Télécharger l'artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: calculatrice
+          path: dist/
+
+      - name: Simuler le déploiement
+        run: |
+          echo "Déploiement simulé avec succès."
+          ls -la dist/
