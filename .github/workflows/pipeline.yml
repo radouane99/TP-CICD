@@ -57,7 +57,7 @@ jobs:
         run: |
           mkdir -p dist
           cp calculatrice.py dist/
-          
+
       - name: Build Docker Image
         run: docker build -t calculatrice-cicd:latest .    
 
@@ -68,18 +68,71 @@ jobs:
           path: dist/
 
   deploy:
-    name: Simulation du déploiement
+    name: Déploiement réel sur GitHub Pages
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Télécharger l'artifact
+      - uses: actions/checkout@v4
+
+      - name: Télécharger l'artefact
         uses: actions/download-artifact@v4
         with:
-          name: calculatrice
+          name: calculatrice-paquet
           path: dist/
 
-      - name: Simuler le déploiement
+      - name: Installer Python et dépendances
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Générer le rapport HTML de couverture
         run: |
-          echo "Déploiement simulé avec succès."
-          ls -la dist/
+          pip install -r requirements.txt
+          pytest --cov=calculatrice --cov-report=html:dist/coverage
+
+      - name: Créer la page d'accueil web
+        run: |
+          cat << 'EOF' > dist/index.html
+          <!DOCTYPE html>
+          <html lang="fr">
+          <head>
+            <meta charset="UTF-8">
+            <title>Calculatrice CI/CD - Statut Déployé</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 40px; background: #f8fafc; color: #1e293b; text-align: center; }
+              .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 600px; margin: auto; }
+              h1 { color: #2563eb; }
+              .badge { display: inline-block; padding: 6px 14px; background: #22c55e; color: white; border-radius: 20px; font-weight: bold; }
+              .btn { display: inline-block; margin-top: 20px; padding: 10px 20px; background: #0f172a; color: white; text-decoration: none; border-radius: 6px; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h1>🚀 Application Déployée en Production</h1>
+              <p><span class="badge">Statut : En ligne (100% Tests Passés)</span></p>
+              <p>Projet : <strong>Calculatrice CI/CD</strong></p>
+              <p>Déployé automatiquement via <strong>GitHub Actions</strong> sur la branche <code>main</code>.</p>
+              <a class="btn" href="./coverage/index.html">Voir le rapport complet de couverture (pytest-cov)</a>
+            </div>
+          </body>
+          </html>
+          EOF
+
+      - name: Configurer GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Téléverser l'artefact Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/
+
+      - name: Déployer vers GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
