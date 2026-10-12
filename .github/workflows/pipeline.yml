@@ -1,6 +1,5 @@
 
 name: Pipeline CI-CD
-
 on:
   push:
     branches: [main]
@@ -58,6 +57,9 @@ jobs:
         run: |
           mkdir -p dist
           cp calculatrice.py dist/
+          
+      - name: Build Docker Image
+        run: docker build -t calculatrice-cicd:latest .    
 
       - name: Publier l'artifact
         uses: actions/upload-artifact@v4

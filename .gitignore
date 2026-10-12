@@ -4,3 +4,4 @@ __pycache__/
 .pytest_cache/
 *.py[cod]
 "@ | Set-Content -Path .gitignore -Encoding utf8
+.coverage
